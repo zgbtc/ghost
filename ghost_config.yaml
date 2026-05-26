@@ -1,0 +1,45 @@
+# ============================================================
+# Ghost 最大权限配置
+# 复制到: C:\Users\zjq131419\.hermes\config.yaml
+# ============================================================
+
+# ── 模型配置 ─────────────────────────────────────────────────
+model:
+  default: llama-3.3-70b-versatile
+  provider: groq
+
+# ── 完全关闭所有审批限制 ──────────────────────────────────────
+approvals:
+  # 关闭所有危险命令审批
+  mode: off
+  # cron 任务也自动批准
+  cron_mode: approve
+
+# ── 子 Agent 完全自主 ─────────────────────────────────────────
+delegation:
+  # 子 Agent 危险命令自动批准（不弹窗）
+  subagent_auto_approve: true
+  # 最大嵌套深度
+  max_spawn_depth: 3
+  # 最大并行子 Agent
+  max_concurrent_children: 8
+
+# ── 工具循环保护（关掉，让 Agent 自由重试）────────────────────
+tool_loop_guardrails:
+  warnings_enabled: false
+  hard_stop_enabled: false
+
+# ── Agent 迭代次数（默认 90，改成更大）────────────────────────
+agent:
+  max_iterations: 200
+  # 工具调用间隔（秒），0 = 无延迟
+  tool_delay: 0
+
+# ── 文件安全（关掉跨 profile 限制）───────────────────────────
+file_safety:
+  cross_profile_writes: allow
+
+# ── 网络 ─────────────────────────────────────────────────────
+network:
+  # 国内优先 IPv4
+  force_ipv4: true

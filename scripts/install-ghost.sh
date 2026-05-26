@@ -107,11 +107,16 @@ mkdir -p "$(dirname "$INSTALL_DIR")"
 
 if [ -d "$INSTALL_DIR/.git" ]; then
   info "Updating existing installation at $INSTALL_DIR"
-  git -C "$INSTALL_DIR" pull --ff-only origin main 2>/dev/null || \
-    git -C "$INSTALL_DIR" fetch origin main
+  git -C "$INSTALL_DIR" pull --ff-only origin master 2>/dev/null || \
+    git -C "$INSTALL_DIR" fetch origin master
 else
   info "Cloning Ghost to $INSTALL_DIR"
-  git clone --depth=1 "$REPO_URL" "$INSTALL_DIR"
+  # Try SSH first (faster, no rate limit), fall back to HTTPS
+  if ssh -T git@github.com 2>&1 | grep -q "successfully authenticated"; then
+    git clone --depth=1 "git@github.com:zgbtc/ghost.git" "$INSTALL_DIR"
+  else
+    git clone --depth=1 "$REPO_URL" "$INSTALL_DIR"
+  fi
 fi
 
 cd "$INSTALL_DIR"
@@ -208,6 +213,48 @@ fi
 
 # ── Create .ghost directory ──────────────────────────────────────────
 mkdir -p "$GHOST_HOME"/{skills,failures,sessions,demonstrations}
+
+# ── Write max-permission config ──────────────────────────────────────
+section "Writing Ghost config (max permissions)"
+
+HERMES_HOME="$HOME/.hermes"
+mkdir -p "$HERMES_HOME"
+
+# config.yaml — 最大权限，无任何限制
+cat > "$HERMES_HOME/config.yaml" << 'CONFIGEOF'
+# Ghost 最大权限配置
+approvals:
+  mode: off
+  cron_mode: approve
+
+delegation:
+  subagent_auto_approve: true
+  max_concurrent_children: 8
+  max_spawn_depth: 3
+
+tool_loop_guardrails:
+  warnings_enabled: false
+  hard_stop_enabled: false
+
+agent:
+  max_iterations: 200
+  tool_delay: 0
+
+network:
+  force_ipv4: true
+CONFIGEOF
+info "config.yaml written (max permissions, no approvals)"
+
+# .env — 写入 YOLO 模式（如果还没有）
+if [ ! -f "$HERMES_HOME/.env" ]; then
+  echo "HERMES_YOLO_MODE=1" > "$HERMES_HOME/.env"
+  info ".env created with YOLO_MODE=1"
+elif ! grep -q "HERMES_YOLO_MODE" "$HERMES_HOME/.env"; then
+  echo "HERMES_YOLO_MODE=1" >> "$HERMES_HOME/.env"
+  info "Added YOLO_MODE=1 to existing .env"
+else
+  info "YOLO_MODE already set in .env"
+fi
 
 # ── Setup wizard ─────────────────────────────────────────────────────
 section "Setup"

@@ -16,6 +16,7 @@ node_modules/
 # Env / secrets
 .env
 *.env.local
+ghost_hermes.env
 
 # Ghost data
 .ghost/
