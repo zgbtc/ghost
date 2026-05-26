@@ -28,7 +28,7 @@ Built on [Hermes Agent](https://github.com/NousResearch/hermes-agent) (MIT) with
 ### macOS / Linux (one line)
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/zgbtc/ghost/main/scripts/install-ghost.sh | bash
+curl -fsSL https://raw.githubusercontent.com/zgbtc/ghost/master/scripts/install-ghost.sh | bash
 ```
 
 Works on:
@@ -40,7 +40,7 @@ Works on:
 ### Windows (PowerShell)
 
 ```powershell
-iex (irm https://raw.githubusercontent.com/zgbtc/ghost/main/scripts/install-ghost.ps1)
+iex (irm https://raw.githubusercontent.com/zgbtc/ghost/master/scripts/install-ghost.ps1)
 ```
 
 Works on Windows 10/11 (x64).
