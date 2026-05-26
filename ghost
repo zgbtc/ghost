@@ -1,0 +1,20 @@
+#!/usr/bin/env python3
+"""
+Ghost — your digital twin with full computer control.
+
+Built on Hermes Agent (NousResearch, MIT license) with Ghost desktop
+control layer: cross-platform human-like mouse, keyboard, and screen capture.
+
+Usage:
+    ghost                  # Interactive chat
+    ghost gateway telegram # Telegram bot
+    ghost gateway discord  # Discord bot
+    ghost cron list        # Scheduled tasks
+    ghost doctor           # Check configuration
+    ghost tools            # Configure tools
+    ghost setup            # First-time setup
+"""
+
+if __name__ == "__main__":
+    from hermes_cli.main import main
+    main()

@@ -1,0 +1,44 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Node
+node_modules/
+.npm/
+
+# Env / secrets
+.env
+*.env.local
+
+# Ghost data
+.ghost/
+ghost.sqlite
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Lock files (keep uv.lock, exclude package-lock)
+package-lock.json
+
+# Build artifacts
+ui-tui/dist/
+web/dist/
+hermes_cli/web_dist/
+hermes_cli/tui_dist/
