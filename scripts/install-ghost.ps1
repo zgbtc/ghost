@@ -84,10 +84,40 @@ if (-not (Test-Path $installParent)) {
 
 if (Test-Path "$InstallDir\.git") {
     Info "Updating existing installation at $InstallDir"
-    git -C $InstallDir pull --ff-only origin main 2>&1 | Out-Null
+    git -C $InstallDir pull --ff-only origin master 2>&1 | Out-Null
 } else {
     Info "Cloning Ghost to $InstallDir"
-    git clone --depth=1 $RepoUrl $InstallDir
+    # Try SSH first (more reliable in China), fall back to HTTPS
+    $cloneOk = $false
+    $RepoUrlSsh = "git@github.com:zgbtc/ghost.git"
+
+    # Check if SSH key exists
+    $sshKey = "$env:USERPROFILE\.ssh\id_rsa", "$env:USERPROFILE\.ssh\id_ed25519" | Where-Object { Test-Path $_ } | Select-Object -First 1
+    if ($sshKey) {
+        Info "Trying SSH clone (SSH key found)..."
+        git clone --depth=1 $RepoUrlSsh $InstallDir 2>&1 | Out-Null
+        if ($LASTEXITCODE -eq 0) { $cloneOk = $true; Info "SSH clone succeeded" }
+    }
+
+    if (-not $cloneOk) {
+        Info "Trying HTTPS clone..."
+        git clone --depth=1 $RepoUrl $InstallDir 2>&1 | Out-Null
+        if ($LASTEXITCODE -eq 0) { $cloneOk = $true; Info "HTTPS clone succeeded" }
+    }
+
+    if (-not $cloneOk) {
+        Write-Host ""
+        Write-Host "Clone failed. GitHub may be blocked on this network." -ForegroundColor Red
+        Write-Host ""
+        Write-Host "Options:" -ForegroundColor Yellow
+        Write-Host "  1. Use a VPN and re-run this script"
+        Write-Host "  2. Manual install — copy the ghost folder from another machine to:"
+        Write-Host "     $InstallDir"
+        Write-Host "  3. If you have the source locally, run:"
+        Write-Host "     uv pip install -e '.[all,ghost-desktop-windows]'"
+        Write-Host "     from inside the ghost folder"
+        exit 1
+    }
 }
 
 Set-Location $InstallDir
