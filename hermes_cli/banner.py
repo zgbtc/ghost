@@ -690,28 +690,7 @@ def build_welcome_banner(console: Console, model: str, cwd: str,
     else:
         title_markup = f"[bold {title_color}]{version_label}[/]"
 
-    # 像素风 GHOST 大字 banner（替换原来的 ⚕ NOUS HERMES 框）
-    ghost_pixel = (
-        f"[bold {title_color}]"
-        "  ____  _   _  ___  ____  _____\n"
-        " / ___|| | | |/ _ \\/ ___||_   _|\n"
-        "| |  _ | |_| | | | \\___ \\  | |  \n"
-        "| |_| ||  _  | |_| |___) | | |  \n"
-        " \\____||_| |_|\\___/|____/  |_|  \n"
-        f"[/][dim {title_color}]  your digital twin · full computer control[/]"
-    )
-
-    # 像素风 GHOST 大字 banner（替换原来的 ⚕ NOUS HERMES 框）
-    ghost_pixel = (
-        f"[bold {title_color}]"
-        "  ____  _   _  ___  ____  _____\n"
-        " / ___|| | | |/ _ \\/ ___||_   _|\n"
-        "| |  _ | |_| | | | \\___ \\  | |  \n"
-        "| |_| ||  _  | |_| |___) | | |  \n"
-        " \\____||_| |_|\\___/|____/  |_|  \n"
-        f"[/][dim {title_color}]  your digital twin · full computer control[/]"
-    )
-
+    # 像素风 GHOST 大字 banner
     outer_panel = Panel(
         layout_table,
         title=title_markup,
