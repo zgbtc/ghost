@@ -90,12 +90,9 @@ try {
 if (-not $SkipBrowser) {
     Section "Setting up stealth browser"
     uv pip install playwright --quiet
-    try {
-        .\.venv\Scripts\python.exe -m playwright install chromium 2>&1 | Out-Null
-        Info "Stealth browser ready"
-    } catch {
-        Warn "Playwright browser install failed — run manually: playwright install chromium"
-    }
+    Info "Playwright installed. To install Chromium browser later, run:"
+    Info "  playwright install chromium"
+    Info "  (or use a mirror: PLAYWRIGHT_DOWNLOAD_HOST=https://npmmirror.com/mirrors/playwright playwright install chromium)"
 }
 
 # ── Create ghost.cmd ──────────────────────────────────────────────────

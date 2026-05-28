@@ -64,6 +64,10 @@ _HERMES_CORE_TOOLS = [
     "desktop_scroll", "desktop_drag",
     "desktop_window_list", "desktop_window_focus", "desktop_window_move",
     "desktop_mouse_pos",
+    # Ghost self-evolution — read/edit/extend Ghost itself at runtime
+    "ghost_self_locate", "ghost_self_read", "ghost_self_write", "ghost_self_patch",
+    "ghost_self_reload", "ghost_self_register_tool", "ghost_self_capabilities",
+    "ghost_self_log_growth", "ghost_self_rewrite_soul", "ghost_self_commit",
     # Home Assistant smart home control (gated on HASS_TOKEN via check_fn)
     "ha_list_entities", "ha_get_state", "ha_list_services", "ha_call_service",
     # Kanban multi-agent coordination — only in schema when the agent is
@@ -168,6 +172,21 @@ TOOLSETS = {
             "desktop_scroll", "desktop_drag",
             "desktop_window_list", "desktop_window_focus", "desktop_window_move",
             "desktop_mouse_pos",
+        ],
+        "includes": []
+    },
+
+    "ghost-self-evolve": {
+        "description": (
+            "Ghost self-evolution tools — Ghost can read, edit, and extend itself at runtime. "
+            "Register new tools that persist across restarts, hot-reload modules, "
+            "rewrite soul.md, and keep a growth journal. "
+            "This is the 'he is me, I am him' capability set."
+        ),
+        "tools": [
+            "ghost_self_locate", "ghost_self_read", "ghost_self_write", "ghost_self_patch",
+            "ghost_self_reload", "ghost_self_register_tool", "ghost_self_capabilities",
+            "ghost_self_log_growth", "ghost_self_rewrite_soul", "ghost_self_commit",
         ],
         "includes": []
     },

@@ -16,6 +16,7 @@ from __future__ import annotations
 import base64
 import io
 import math
+import os
 import platform
 import random
 import subprocess
@@ -117,8 +118,236 @@ def _clipboard_paste(text: str) -> None:
 
 
 # ─────────────────────────────────────────────────────────────────────
-# Screenshot
+# Vision analysis — Ollama local first, cloud API fallback
 # ─────────────────────────────────────────────────────────────────────
+
+# Default local vision model. Override with env GHOST_VISION_MODEL.
+_DEFAULT_OLLAMA_VISION_MODEL = "openbmb/minicpm-v4.6"
+
+# Ollama base URL. Override with env OLLAMA_BASE_URL or OLLAMA_HOST.
+def _ollama_base_url() -> str:
+    return (
+        os.environ.get("OLLAMA_BASE_URL")
+        or os.environ.get("OLLAMA_HOST")
+        or "http://localhost:11434"
+    ).rstrip("/")
+
+
+def _ollama_vision_available() -> tuple[bool, str]:
+    """Check if Ollama is running and the vision model is pulled.
+
+    Returns (available, model_name).
+    """
+    import httpx
+    model = os.environ.get("GHOST_VISION_MODEL", _DEFAULT_OLLAMA_VISION_MODEL)
+    base = _ollama_base_url()
+    try:
+        # Quick health check — /api/tags lists pulled models
+        resp = httpx.get(f"{base}/api/tags", timeout=3.0)
+        if resp.status_code != 200:
+            return False, model
+        pulled = [m.get("name", "") for m in resp.json().get("models", [])]
+        # Match by prefix (e.g. "openbmb/minicpm-v4.6" matches "openbmb/minicpm-v4.6:latest")
+        for p in pulled:
+            if p.startswith(model.split(":")[0]):
+                return True, p  # return the exact pulled name
+        return False, model
+    except Exception:
+        return False, model
+
+
+def _vision_analyze_screen(b64_png: str) -> str:
+    """Analyze a screenshot. Priority:
+
+    1. **Ollama local** (openbmb/minicpm-v4.6 by default) — zero token cost,
+       no network, no API key needed. Fastest path when Ollama is running.
+    2. SiliconFlow Qwen3-VL (SILICONFLOW_API_KEY)
+    3. Alibaba Qwen-VL (DASHSCOPE_API_KEY)
+    4. GLM-4V (GLM_API_KEY)
+    5. Google Gemini (GOOGLE_API_KEY)
+    6. OpenRouter free vision models (OPENROUTER_API_KEY)
+    7. Anthropic Claude (ANTHROPIC_API_KEY) — last resort, opt-in only
+
+    To install the local model (one-time, ~1.6 GB):
+        # macOS / Linux:
+        brew install ollama && ollama pull openbmb/minicpm-v4.6
+        # Windows:
+        winget install Ollama.Ollama && ollama pull openbmb/minicpm-v4.6
+        # Then start the server:
+        ollama serve   (or it auto-starts on macOS/Windows)
+
+    To use a different local model:
+        GHOST_VISION_MODEL=llama3.2-vision  (in .env)
+    """
+    import httpx
+
+    VISION_PROMPT = (
+        "Describe what's on screen in detail. "
+        "List all visible UI elements, text, buttons, and their approximate positions. "
+        "Be specific about coordinates if you can estimate them."
+    )
+
+    data_url = f"data:image/png;base64,{b64_png}"
+
+    # ── 1. Ollama local (preferred — free, fast, private) ─────────────
+    ollama_ok, ollama_model = _ollama_vision_available()
+    if ollama_ok:
+        try:
+            resp = httpx.post(
+                f"{_ollama_base_url()}/api/chat",
+                json={
+                    "model": ollama_model,
+                    "messages": [{
+                        "role": "user",
+                        "content": VISION_PROMPT,
+                        "images": [b64_png],  # Ollama accepts raw base64 in images[]
+                    }],
+                    "stream": False,
+                },
+                timeout=60.0,  # local inference can be slow on CPU
+            )
+            if resp.status_code == 200:
+                text = resp.json().get("message", {}).get("content", "")
+                if text and text.strip():
+                    return text.strip()
+        except Exception:
+            pass  # Ollama failed, fall through to cloud
+
+    # ── 2. Cloud API fallback ─────────────────────────────────────────
+    # Provider configs — ordered by preference
+    # fmt: "url" = standard OpenAI image_url format
+    #      "glm" = GLM-4V special format
+    cloud_providers = [
+        {
+            "name": "SiliconFlow Qwen3-VL",
+            "key_env": "SILICONFLOW_API_KEY",
+            "base_url": os.environ.get("SILICONFLOW_BASE_URL", "https://api.siliconflow.cn/v1"),
+            "model": "Qwen/Qwen3-VL-8B-Instruct",
+            "fmt": "url",
+        },
+        {
+            "name": "Alibaba Qwen-VL",
+            "key_env": "DASHSCOPE_API_KEY",
+            "base_url": os.environ.get("DASHSCOPE_BASE_URL", "https://dashscope.aliyuncs.com/compatible-mode/v1"),
+            "model": "qwen-vl-max",
+            "fmt": "url",
+        },
+        {
+            "name": "GLM-4V",
+            "key_env": "GLM_API_KEY",
+            "base_url": os.environ.get("GLM_BASE_URL", "https://open.bigmodel.cn/api/paas/v4"),
+            "model": "glm-4v-flash",
+            "fmt": "glm",
+        },
+        {
+            "name": "Google Gemini",
+            "key_env": "GOOGLE_API_KEY",
+            "base_url": os.environ.get("GOOGLE_BASE_URL", "https://generativelanguage.googleapis.com/v1beta/openai"),
+            "model": "gemini-2.0-flash",
+            "fmt": "url",
+        },
+        {
+            "name": "OpenRouter Gemma-4-31B",
+            "key_env": "OPENROUTER_API_KEY",
+            "base_url": os.environ.get("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1"),
+            "model": "google/gemma-4-31b-it:free",
+            "fmt": "url",
+            "extra_headers": {"HTTP-Referer": "https://github.com/ghost-agent"},
+        },
+        {
+            "name": "OpenRouter Gemma-4-26B",
+            "key_env": "OPENROUTER_API_KEY",
+            "base_url": os.environ.get("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1"),
+            "model": "google/gemma-4-26b-a4b-it:free",
+            "fmt": "url",
+            "extra_headers": {"HTTP-Referer": "https://github.com/ghost-agent"},
+        },
+    ]
+
+    for p in cloud_providers:
+        api_key = os.environ.get(p["key_env"], "").strip()
+        if not api_key:
+            continue
+        try:
+            if p["fmt"] == "url":
+                content = [
+                    {"type": "image_url", "image_url": {"url": data_url}},
+                    {"type": "text", "text": VISION_PROMPT},
+                ]
+            elif p["fmt"] == "glm":
+                content = [
+                    {"type": "image_url", "image_url": {"url": b64_png}},
+                    {"type": "text", "text": VISION_PROMPT},
+                ]
+            else:
+                content = [
+                    {"type": "image", "source": {"type": "base64", "media_type": "image/png", "data": b64_png}},
+                    {"type": "text", "text": VISION_PROMPT},
+                ]
+            resp = httpx.post(
+                f"{p['base_url'].rstrip('/')}/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {api_key}",
+                    "Content-Type": "application/json",
+                    **(p.get("extra_headers") or {}),
+                },
+                json={
+                    "model": p["model"],
+                    "messages": [{"role": "user", "content": content}],
+                    "max_tokens": 1024,
+                },
+                timeout=30.0,
+            )
+            if resp.status_code != 200:
+                continue
+            data = resp.json()
+            text = (data.get("choices") or [{}])[0].get("message", {}).get("content", "")
+            if text and text.strip():
+                return text.strip()
+        except Exception:
+            continue
+
+    # ── 3. Anthropic last resort (opt-in only) ────────────────────────
+    anthropic_key = os.environ.get("ANTHROPIC_API_KEY", "").strip()
+    if anthropic_key:
+        try:
+            resp = httpx.post(
+                "https://api.anthropic.com/v1/messages",
+                headers={
+                    "x-api-key": anthropic_key,
+                    "anthropic-version": "2023-06-01",
+                    "content-type": "application/json",
+                },
+                json={
+                    "model": "claude-haiku-4-5",
+                    "max_tokens": 1024,
+                    "messages": [{
+                        "role": "user",
+                        "content": [
+                            {"type": "image", "source": {"type": "base64", "media_type": "image/png", "data": b64_png}},
+                            {"type": "text", "text": VISION_PROMPT},
+                        ],
+                    }],
+                },
+                timeout=30.0,
+            )
+            if resp.status_code == 200:
+                return resp.json()["content"][0]["text"].strip()
+        except Exception:
+            pass
+
+    return (
+        "(no vision provider available)\n"
+        "To enable local vision (recommended, free, no API key):\n"
+        "  Windows: winget install Ollama.Ollama\n"
+        "  macOS:   brew install ollama\n"
+        "  Then:    ollama pull openbmb/minicpm-v4.6\n"
+        "           ollama serve\n"
+        "Or set SILICONFLOW_API_KEY / DASHSCOPE_API_KEY / GOOGLE_API_KEY in .env"
+    )
+
+
+
 
 def _take_screenshot(monitor: int = 0) -> tuple[int, int, str]:
     """Returns (width, height, base64_png)."""
@@ -279,31 +508,8 @@ async def _handle_desktop_capture(args: dict, **_) -> str:
 
     if analyze:
         try:
-            # Try to use the LLM vision analysis
-            import os
-            api_key = os.environ.get("ANTHROPIC_API_KEY", "")
-            if api_key:
-                import anthropic
-                client = anthropic.Anthropic(api_key=api_key)
-                resp = client.messages.create(
-                    model="claude-haiku-4-5",
-                    max_tokens=1024,
-                    messages=[{
-                        "role": "user",
-                        "content": [
-                            {"type": "image", "source": {"type": "base64",
-                             "media_type": "image/png", "data": b64}},
-                            {"type": "text", "text":
-                             "Describe what's on screen in detail. "
-                             "List all visible UI elements, text, buttons, and their approximate positions. "
-                             "Be specific about coordinates if you can estimate them."}
-                        ]
-                    }]
-                )
-                analysis = resp.content[0].text
-                result += f"\n\n[Screen Analysis]\n{analysis}"
-            else:
-                result += f"\n\n[Screen Analysis]\n(Set ANTHROPIC_API_KEY for vision analysis)"
+            analysis = _vision_analyze_screen(b64)
+            result += f"\n\n[Screen Analysis]\n{analysis}"
         except Exception as e:
             result += f"\n\n[Screen Analysis]\n(Vision analysis failed: {e})"
 

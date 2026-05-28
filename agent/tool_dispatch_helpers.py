@@ -53,6 +53,14 @@ _PARALLEL_SAFE_TOOLS = frozenset({
     "vision_analyze",
     "web_extract",
     "web_search",
+    # Ghost desktop read-only tools — safe to run concurrently
+    "desktop_capture",       # screenshot — read-only
+    "desktop_window_list",   # list windows — read-only
+    "desktop_mouse_pos",     # get cursor position — read-only
+    # Ghost self-evolution read-only tools
+    "ghost_self_locate",
+    "ghost_self_read",
+    "ghost_self_capabilities",
 })
 
 # File tools can run concurrently when they target independent paths.

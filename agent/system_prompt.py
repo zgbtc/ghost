@@ -29,6 +29,9 @@ from typing import Any, Dict, List, Optional
 
 from agent.prompt_builder import (
     DEFAULT_AGENT_IDENTITY,
+    GHOST_AGENT_IDENTITY,
+    GHOST_PLANNING_GUIDANCE,
+    GHOST_SELF_EVOLVE_GUIDANCE,
     GOOGLE_MODEL_OPERATIONAL_GUIDANCE,
     HERMES_AGENT_HELP_GUIDANCE,
     KANBAN_GUIDANCE,
@@ -94,8 +97,12 @@ def build_system_prompt_parts(agent: Any, system_message: Optional[str] = None) 
             _soul_loaded = True
 
     if not _soul_loaded:
-        # Fallback to hardcoded identity
-        stable_parts.append(DEFAULT_AGENT_IDENTITY)
+        # Use Ghost identity if ghost tools are present, else Hermes default
+        _ghost_tools = {"ghost_self_locate", "desktop_capture", "desktop_click"}
+        if _ghost_tools & set(agent.valid_tool_names):
+            stable_parts.append(GHOST_AGENT_IDENTITY)
+        else:
+            stable_parts.append(DEFAULT_AGENT_IDENTITY)
 
     # Pointer to the hermes-agent skill + docs for user questions about Hermes itself.
     stable_parts.append(HERMES_AGENT_HELP_GUIDANCE)
@@ -155,6 +162,19 @@ def build_system_prompt_parts(agent: Any, system_message: Optional[str] = None) 
             "(use `terminal` with `sleep 1` or `time.sleep(1)` in `execute_code`)."
         )
 
+    # Ghost self-evolution — runtime tool registration and self-modification
+    _ghost_self_tools = {
+        "ghost_self_locate", "ghost_self_read", "ghost_self_write", "ghost_self_patch",
+        "ghost_self_reload", "ghost_self_register_tool", "ghost_self_capabilities",
+        "ghost_self_log_growth", "ghost_self_rewrite_soul",
+    }
+    if _ghost_self_tools & set(agent.valid_tool_names):
+        stable_parts.append(GHOST_SELF_EVOLVE_GUIDANCE)
+
+    # Claude Code-inspired planning discipline — injected when todo tool is available
+    if "todo" in agent.valid_tool_names:
+        stable_parts.append(GHOST_PLANNING_GUIDANCE)
+
     nous_subscription_prompt = _r.build_nous_subscription_prompt(agent.valid_tool_names)
     if nous_subscription_prompt:
         stable_parts.append(nous_subscription_prompt)
@@ -186,12 +206,17 @@ def build_system_prompt_parts(agent: Any, system_message: Optional[str] = None) 
             # paths, parallel tool calls, verify-before-edit, etc.)
             if "gemini" in _model_lower or "gemma" in _model_lower:
                 stable_parts.append(GOOGLE_MODEL_OPERATIONAL_GUIDANCE)
-            # OpenAI GPT/Codex execution discipline (tool persistence,
-            # prerequisite checks, verification, anti-hallucination).
-            # Also applied to xAI Grok — same failure modes (claims completion
-            # without tool calls, suggests workarounds instead of using
-            # existing tools, replies with plans instead of executing).
-            if "gpt" in _model_lower or "codex" in _model_lower or "grok" in _model_lower:
+            # Execution discipline for models that tend to describe instead of act.
+            # Originally GPT/Codex/Grok — extended to llama, mistral, qwen, glm, deepseek
+            # which share the same failure modes when used via Groq/SiliconFlow/OpenRouter.
+            _needs_exec_discipline = (
+                "gpt" in _model_lower or "codex" in _model_lower or "grok" in _model_lower
+                or "llama" in _model_lower or "mistral" in _model_lower
+                or "mixtral" in _model_lower or "qwen" in _model_lower
+                or "glm" in _model_lower or "deepseek" in _model_lower
+                or "phi" in _model_lower or "command" in _model_lower
+            )
+            if _needs_exec_discipline:
                 stable_parts.append(OPENAI_MODEL_EXECUTION_GUIDANCE)
 
     has_skills_tools = any(name in agent.valid_tool_names for name in ['skills_list', 'skill_view', 'skill_manage'])

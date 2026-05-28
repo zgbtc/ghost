@@ -1,16 +1,18 @@
 # ============================================================
-# Ghost 最大权限配置
-# 复制到: C:\Users\zjq131419\.hermes\config.yaml
+# Ghost × Hermes 最大权限配置 (Claude Code + Ghost 融合版)
+# 复制到: ~/.hermes/config.yaml
 # ============================================================
 
 # ── 模型配置 ─────────────────────────────────────────────────
 model:
+  # 推荐: groq (最快免费) | zhipu (glm-4-flash 免费) | alibaba (qwen-turbo)
+  # 切换: hermes 里输入 /model
   default: llama-3.3-70b-versatile
   provider: groq
 
 # ── 完全关闭所有审批限制 ──────────────────────────────────────
 approvals:
-  # 关闭所有危险命令审批
+  # 关闭所有危险命令审批 (HERMES_YOLO_MODE=1 也会生效)
   mode: off
   # cron 任务也自动批准
   cron_mode: approve
@@ -19,7 +21,7 @@ approvals:
 delegation:
   # 子 Agent 危险命令自动批准（不弹窗）
   subagent_auto_approve: true
-  # 最大嵌套深度
+  # 最大嵌套深度 (orchestrator → worker → leaf)
   max_spawn_depth: 3
   # 最大并行子 Agent
   max_concurrent_children: 8
@@ -29,11 +31,14 @@ tool_loop_guardrails:
   warnings_enabled: false
   hard_stop_enabled: false
 
-# ── Agent 迭代次数（默认 90，改成更大）────────────────────────
+# ── Agent 迭代次数 ────────────────────────────────────────────
 agent:
+  # 默认 90，改成 200 支持长任务
   max_iterations: 200
   # 工具调用间隔（秒），0 = 无延迟
   tool_delay: 0
+  # 任务规划 (Claude Code 风格 TodoWrite/TodoRead)
+  todo_enabled: true
 
 # ── 文件安全（关掉跨 profile 限制）───────────────────────────
 file_safety:
@@ -43,3 +48,43 @@ file_safety:
 network:
   # 国内优先 IPv4
   force_ipv4: true
+
+# ── 技能系统 ─────────────────────────────────────────────────
+skills:
+  # 任务完成后自动尝试结晶为技能
+  auto_crystallize: true
+  # 技能置信度阈值（低于此值时提示改进）
+  confidence_threshold: 0.6
+
+# ── 流式输出 ─────────────────────────────────────────────────
+streaming:
+  # 开启流式输出（typewriter 效果）
+  enabled: true
+
+# ── Ghost 自我进化 ────────────────────────────────────────────
+ghost:
+  # 开启 self-evolve 工具集
+  self_evolve: true
+  # 开启 Ghost 桌面控制
+  desktop: true
+  # Vision 分析优先级:
+  #   1. Ollama 本地 (openbmb/minicpm-v4.6) — 零 token，无网络，推荐
+  #   2. SiliconFlow / Alibaba / GLM / Google / OpenRouter
+  #   5. Anthropic (最后兜底)
+  # 安装本地视觉 (一次性 ~1.6GB):
+  #   Windows: winget install Ollama.Ollama && ollama pull openbmb/minicpm-v4.6
+  #   macOS:   brew install ollama && ollama pull openbmb/minicpm-v4.6
+  vision_local_model: openbmb/minicpm-v4.6
+
+# ── Auxiliary LLM (vision_analyze 工具 + context compression) ────
+# 安装 Ollama 后取消注释，让 vision_analyze 也走本地视觉
+# auxiliary:
+#   vision:
+#     provider: custom
+#     base_url: http://localhost:11434/v1
+#     model: openbmb/minicpm-v4.6
+#     api_key: ollama
+#   compression:
+#     # 用 Groq 做 context compression（快且免费）
+#     provider: groq
+#     model: llama-3.3-70b-versatile
