@@ -61,6 +61,13 @@ streaming:
   # 开启流式输出（typewriter 效果）
   enabled: true
 
+# ── Prompt Caching（省 token，省钱）──────────────────────────
+# 对 Claude / Qwen / MiniMax 等支持 cache_control 的模型自动生效
+# cache_ttl: "5m" = 5分钟缓存（默认），"1h" = 1小时缓存（跨 session 省更多）
+# 1h 写入成本是 5m 的 2x，但多 session 使用时摊销后更划算
+prompt_caching:
+  cache_ttl: "1h"
+
 # ── Ghost 自我进化 ────────────────────────────────────────────
 ghost:
   # 开启 self-evolve 工具集
