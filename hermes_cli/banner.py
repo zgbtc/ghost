@@ -67,13 +67,14 @@ def _skin_branding(key: str, fallback: str) -> str:
 
 from hermes_cli import __version__ as VERSION, __release_date__ as RELEASE_DATE
 
-# 山河俱乐部 ASCII art logo
-HERMES_AGENT_LOGO = """[bold #FFD700] _____ _   _    ____ _    _   _ ____  [/]
-[bold #FFD700]/ ____| | | |  / ___| |  | | | |  _ \\ [/]
-[#D4A017]\___ \\ |_| | | |   | |  | | | | |_) |[/]
-[#D4A017] ___) |  _  | | |___| |__| |_| |  _ < [/]
-[#B8860B]|____/|_| |_|  \____|_____\___/|_| \\_\\[/]
-[dim #8B6914]  山河俱乐部  ·  SH Club  ·  your digital twin[/]"""
+# 山河俱乐部 ASCII art logo — 绿色像素块风格 GHOST 大字
+HERMES_AGENT_LOGO = """[bold #00FFFF] ██████╗ ██╗  ██╗ ██████╗ ███████╗████████╗[/]
+[bold #00FF88]██╔════╝ ██║  ██║██╔═══██╗██╔════╝╚══██╔══╝[/]
+[bold #00FF00]██║  ███╗███████║██║   ██║███████╗   ██║   [/]
+[bold #00CC00]██║   ██║██╔══██║██║   ██║╚════██║   ██║   [/]
+[bold #009900]╚██████╔╝██║  ██║╚██████╔╝███████║   ██║   [/]
+[bold #006600] ╚═════╝ ╚═╝  ╚═╝ ╚═════╝ ╚══════╝   ╚═╝   [/]
+[dim #006633]  your digital twin · full computer control[/]"""
 
 # 山河俱乐部 icon — 山(山峰) + ∞(无限符号) + 河(河流) 黑金风格
 HERMES_CADUCEUS = """[#FFD700]        /\\        /\\      [/]
@@ -377,7 +378,7 @@ def get_latest_release_tag(repo_dir: Optional[Path] = None) -> Optional[tuple]:
 
 def format_banner_version_label() -> str:
     """Return the version label shown in the startup banner title."""
-    base = f"Hermes Agent v{VERSION} ({RELEASE_DATE})"
+    base = f"Ghost v{VERSION} ({RELEASE_DATE})"
     state = get_git_banner_state()
     if not state:
         return base
@@ -688,6 +689,29 @@ def build_welcome_banner(console: Console, model: str, cwd: str,
         title_markup = f"[bold {title_color}][link={_url}]{version_label}[/link][/]"
     else:
         title_markup = f"[bold {title_color}]{version_label}[/]"
+
+    # 像素风 GHOST 大字 banner（替换原来的 ⚕ NOUS HERMES 框）
+    ghost_pixel = (
+        f"[bold {title_color}]"
+        "  ____  _   _  ___  ____  _____\n"
+        " / ___|| | | |/ _ \\/ ___||_   _|\n"
+        "| |  _ | |_| | | | \\___ \\  | |  \n"
+        "| |_| ||  _  | |_| |___) | | |  \n"
+        " \\____||_| |_|\\___/|____/  |_|  \n"
+        f"[/][dim {title_color}]  your digital twin · full computer control[/]"
+    )
+
+    # 像素风 GHOST 大字 banner（替换原来的 ⚕ NOUS HERMES 框）
+    ghost_pixel = (
+        f"[bold {title_color}]"
+        "  ____  _   _  ___  ____  _____\n"
+        " / ___|| | | |/ _ \\/ ___||_   _|\n"
+        "| |  _ | |_| | | | \\___ \\  | |  \n"
+        "| |_| ||  _  | |_| |___) | | |  \n"
+        " \\____||_| |_|\\___/|____/  |_|  \n"
+        f"[/][dim {title_color}]  your digital twin · full computer control[/]"
+    )
+
     outer_panel = Panel(
         layout_table,
         title=title_markup,
@@ -696,9 +720,8 @@ def build_welcome_banner(console: Console, model: str, cwd: str,
     )
 
     console.print()
-    term_width = shutil.get_terminal_size().columns
-    if term_width >= 95:
-        _logo = _bskin.banner_logo if _bskin and hasattr(_bskin, 'banner_logo') and _bskin.banner_logo else HERMES_AGENT_LOGO
-        console.print(_logo)
-        console.print()
+    # 始终显示 GHOST 大字（不限宽度）
+    _logo = _bskin.banner_logo if _bskin and hasattr(_bskin, 'banner_logo') and _bskin.banner_logo else HERMES_AGENT_LOGO
+    console.print(_logo)
+    console.print()
     console.print(outer_panel)
