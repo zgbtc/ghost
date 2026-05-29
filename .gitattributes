@@ -1,2 +1,8 @@
 # Auto-generated files — collapse diffs and exclude from language stats
 web/package-lock.json linguist-generated=true
+
+# Shell scripts must keep LF line endings (even on Windows checkout)
+*.sh text eol=lf
+安装.sh text eol=lf
+scripts/*.sh text eol=lf
+scripts/install-ghost.sh text eol=lf
